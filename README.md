@@ -1,4 +1,4 @@
 # WeakSDEapproximation
 This repository follows the work done on weak approximation of SDE.
 
-Lots of interesting things happening here. 
+Lots of interesting things will be happening here. 
