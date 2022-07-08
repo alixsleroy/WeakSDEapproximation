@@ -2,28 +2,7 @@ from numba import jit,njit,vectorize, float64, int32
 import numba as nb
 import numpy as np
 
-def plot_dist(y,tau,dt,n_samples,T,title,ax):
-    ax.set_title(str(title)+", $\\tau$="+str(tau)+", h="+str(dt)+", \n N="+str(n_samples)+", T="+str(T))
 
-    #Plot 1
-    histogram,bins = np.histogram(y,bins=100,range=[-5,5], density=True)
-
-    midx = (bins[0:-1]+bins[1:])/2
-    histogram=(histogram/np.sum(histogram))
-    ax.plot(midx,histogram,label='q-Experiment')
-
-
-    ### true distribution 
-    # rho = np.exp(- U(midx)/tau)
-    # rho = rho / ( np.sum(rho)* (midx[1]-midx[0]) ) # Normalize rho by dividing by its approx. integral
-    # ax1.plot(midx,rho,'--',label='Truth')
-
-    rho = np.exp(- (U(midx)/tau))
-    rho = rho / ( np.sum(rho) * (midx[1]-midx[0]) ) 
-    rho=(rho/np.sum(rho))*2
-    rho=[rho[i] if i>50 else 0 for i in range(len(rho))]
-    ax.plot(midx,rho,'--',label='Truth') 
-    ax.legend()
 
 
 def U(x):
@@ -64,7 +43,7 @@ def g3(x,h,dtmin,dtmax):
     gx=gx_num/gx_den
 
     #compute gx prime 
-    gxprime=fprime/(gx_den*gx_den)
+    gxprime=-fprime/(gx_den*gx_den)
 
     #return
     re=np.array([gx,gxprime])
@@ -155,3 +134,25 @@ ytest= IDW_nsample_ada3(10**2,3,0.001,10) # compile the function
 
 
 #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function
+def plot_dist(y,tau,dt,n_samples,T,title,ax):
+    ax.set_title(str(title)+", $\\tau$="+str(tau)+", h="+str(dt)+", \n N="+str(n_samples)+", T="+str(T))
+
+    #Plot 1
+    histogram,bins = np.histogram(y,bins=100,range=[-2,5], density=True)
+
+    midx = (bins[0:-1]+bins[1:])/2
+    histogram=(histogram/np.sum(histogram))
+    ax.plot(midx,histogram,label='q-Experiment')
+
+
+    ### true distribution 
+    # rho = np.exp(- U(midx)/tau)
+    # rho = rho / ( np.sum(rho)* (midx[1]-midx[0]) ) # Normalize rho by dividing by its approx. integral
+    # ax1.plot(midx,rho,'--',label='Truth')
+
+    rho = np.exp(- (U(midx)/tau))
+    rho = rho / ( np.sum(rho) * (midx[1]-midx[0]) ) 
+    rho=(rho/np.sum(rho))*2
+    rho=[rho[i] if i>50 else 0 for i in range(len(rho))]
+    ax.plot(midx,rho,'--',label='Truth') 
+    ax.legend()

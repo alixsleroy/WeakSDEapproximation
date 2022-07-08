@@ -43,34 +43,35 @@ def dU(x):
     return 1/(x*x*x)-2*x
 
 # define the adaptive function 
-@njit(float64(float64))
-def g(x):
+@njit(float64[:](float64,float64,float64,float64))
+def g4(x,h,dtmin,dtmax):
     """
     Compute the value of the adaptive function choosen:
     x: float 
     """
-    dtmin=0.1
-    dtmax=1
-    R=3
-    y=(dtmax-dtmin)*(1-np.exp(-np.abs(x)*R))+dtmin
-    return y
+    M=h/dtmin
+    m=h/dtmax
+    x3=np.power(x,3)
 
+    # value of function f
+    f=(-1/x3+2*x)
+    fprime=(3/(x3*x)+2)
 
-@njit(float64(float64))
-def nablag(x):
-    """
-    Compute the value of the gradient of the adaptive function choosen:
-    x: float 
-    """
-    dtmin=0.1
-    dtmax=1
-    R=3
-    y=(dtmax-dtmin)*np.exp(-np.abs(x)*R)*R
+    #compute gx
+    gx_num=np.sqrt(f*f+m*m)
+    gx_den = M*gx_num+1
+    gx=gx_num/gx_den
 
-    return y
+    #compute gx prime 
+    gxp_den=gx_num+M
+    gxprime= M*M*f*fprime/(gx_num*gxp_den*gxp_den)
+
+    #return
+    re=np.array([gx,gxprime])
+    return re
 
 @njit(float64(float64,float64,float64,float64))
-def e_m_ada(y0,s,b1,dt):
+def e_m_ada4(y0,s,b1,dt):
     """
     The Euler-Maruyama scheme applied to the infinite double well
     y0: float
@@ -82,8 +83,10 @@ def e_m_ada(y0,s,b1,dt):
     dt: float
         time increment
     """
-    gy=g(y0)
-    y1=y0+(gy*dU(y0)+nablag(y0))*dt+np.sqrt(gy)*s*b1
+    re=g4(y0,dt,0.000001,0.1)
+    gy=re[0]
+    nablag=re[1]
+    y1=y0+(gy*dU(y0)+nablag)*dt+np.sqrt(gy)*s*b1
     return y1    
 
 
@@ -91,7 +94,7 @@ def e_m_ada(y0,s,b1,dt):
 # def run_num(N,dt,s,T,n_esc):
 
 @njit(float64(float64,float64,float64))
-def run_num_ada(Ntot,dt,s):
+def run_num_ada4(Ntot,dt,s):
     """
     Run the simulation for one sample path
     Input
@@ -111,14 +114,14 @@ def run_num_ada(Ntot,dt,s):
     y0 = 1
     for jj in range(Ntot): # Run until T= Tsec
         b1 = np.random.normal(0,1,1)[0]
-        y1 = e_m_ada(y0,s,b1,dt)
+        y1 = e_m_ada4(y0,s,b1,dt)
         y0=y1 
     return (y0)
 
 
 
 @njit(parallel=True)
-def IDW_nsample_ada(n_samples,T,dt,tau): # Function is compiled and runs in machine code
+def IDW_nsample_ada4(n_samples,T,dt,tau): # Function is compiled and runs in machine code
     """
     Input
     -------
@@ -143,11 +146,12 @@ def IDW_nsample_ada(n_samples,T,dt,tau): # Function is compiled and runs in mach
     y_final = [] #np.zeros(n_samples)
     s = np.sqrt(2*tau*dt)
     for i in range(n_samples):
-        yf =run_num_ada(Ntot,dt,s)
+        yf =run_num_ada4(Ntot,dt,s)
         y_final.append(yf)
     y_final=np.array(y_final)
     return y_final
 
-ytest= IDW_nsample_ada(10**2,3,0.1,10) # compile the function
+ytest= IDW_nsample_ada4(10**2,3,0.1,10) # compile the function
+
 
 #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function
