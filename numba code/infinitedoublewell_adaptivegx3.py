@@ -1,9 +1,29 @@
-### This code compute langevin dynamics with infinite double for n sample but exclude any sample going below or over a certain bound 
-
-
 from numba import jit,njit,vectorize, float64, int32
 import numba as nb
 import numpy as np
+
+def plot_dist(y,tau,dt,n_samples,T,title,ax):
+    ax.set_title(str(title)+", $\\tau$="+str(tau)+", h="+str(dt)+", \n N="+str(n_samples)+", T="+str(T))
+
+    #Plot 1
+    histogram,bins = np.histogram(y,bins=100,range=[-3,3], density=True)
+    midx = (bins[0:-1]+bins[1:])/2
+    histogram=(histogram/np.sum(histogram))
+    ax.plot(midx,histogram,label='q-Experiment')
+
+
+    ### true distribution 
+    # rho = np.exp(- U(midx)/tau)
+    # rho = rho / ( np.sum(rho)* (midx[1]-midx[0]) ) # Normalize rho by dividing by its approx. integral
+    # ax1.plot(midx,rho,'--',label='Truth')
+
+    rho = np.exp(- (U(midx)/tau))
+    rho = rho / ( np.sum(rho) * (midx[1]-midx[0]) ) 
+    rho=(rho/np.sum(rho))*2
+    rho=[rho[i] if i>50 else 0 for i in range(len(rho))]
+    ax.plot(midx,rho,'--',label='Truth') 
+    ax.legend()
+
 
 def U(x):
     """
@@ -20,10 +40,25 @@ def dU(x):
     x: float 
     """
 
-    return -1/(x*x*x)+2*x
+    return 1/(x*x*x)-2*x
+
+# define the adaptive function 
+@njit(float64[:](float64))
+def g3(x):
+    """
+    Compute the value of the adaptive function choosen:
+    x: float 
+    """
+    x3=np.power(x,3)
+    nablaV=np.abs(-1/x3+2*x)
+    laplacienV=np.abs(3/(x3*x)+2)
+    gx = 1/nablaV
+    gprime=gx*laplacienV/nablaV
+    re=np.array([gx,gprime])
+    return re
 
 @njit(float64(float64,float64,float64,float64))
-def e_m_fast(y0,s,b1,dt):
+def e_m_ada3(y0,s,b1,dt):
     """
     The Euler-Maruyama scheme applied to the infinite double well
     y0: float
@@ -35,15 +70,18 @@ def e_m_fast(y0,s,b1,dt):
     dt: float
         time increment
     """
-    y1=y0 - dU(y0)*dt+s*b1
+    re=g3(y0)
+    gy=re[0]
+    nablag=re[1]
+    y1=y0+(gy*dU(y0)+nablag)*dt+np.sqrt(gy)*s*b1
     return y1    
 
 
 # @njit(nb.types.UniTuple(nb.float64,2)(float64,float64,float64,float64,float64))
 # def run_num(N,dt,s,T,n_esc):
 
-@njit(float64(float64,float64,float64,float64))
-def run_num(Ntot,dt,s,b):
+@njit(float64(float64,float64,float64))
+def run_num_ada3(Ntot,dt,s):
     """
     Run the simulation for one sample path
     Input
@@ -63,18 +101,14 @@ def run_num(Ntot,dt,s,b):
     y0 = 1
     for jj in range(Ntot): # Run until T= Tsec
         b1 = np.random.normal(0,1,1)[0]
-        y1 = e_m_fast(y0,s,b1,dt)
-        if y0>b or y0<0:
-            y0=-99
-            break
-        else:
-            y0=y1 
+        y1 = e_m_ada3(y0,s,b1,dt)
+        y0=y1 
     return (y0)
 
 
 
 @njit(parallel=True)
-def IDW_nsample_p(n_samples,T,dt,tau,b): # Function is compiled and runs in machine code
+def IDW_nsample_ada3(n_samples,T,dt,tau): # Function is compiled and runs in machine code
     """
     Input
     -------
@@ -99,10 +133,11 @@ def IDW_nsample_p(n_samples,T,dt,tau,b): # Function is compiled and runs in mach
     y_final = [] #np.zeros(n_samples)
     s = np.sqrt(2*tau*dt)
     for i in range(n_samples):
-        yf =run_num(Ntot,dt,s,b)
+        yf =run_num_ada3(Ntot,dt,s)
         y_final.append(yf)
     y_final=np.array(y_final)
     return y_final
 
+ytest= IDW_nsample_ada3(10**2,3,0.1,10) # compile the function
 
-
+#%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function

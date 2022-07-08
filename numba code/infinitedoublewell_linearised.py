@@ -7,7 +7,7 @@ import time
 
 
 @njit(float64(float64,float64,float64,float64))
-def e_m_fast(y0,s,b1,dt):
+def em_lin_plus(y0,s,b1,dt):
     """
     The Euler-Maruyama scheme applied to the infinite double well
     y0: float
@@ -19,15 +19,32 @@ def e_m_fast(y0,s,b1,dt):
     dt: float
         time increment
     """
-    a=-7/2
-    b=7*np.power(2,-5/4)
+    a=-8
+    b=np.power(2,11/4)
     y1=y0 + (a*y0+b)*dt+s*b1
-    return y1    
-
+    return y1
+    
+@njit(float64(float64,float64,float64,float64))
+def em_lin_minus(y0,s,b1,dt):
+    """
+    The Euler-Maruyama scheme applied to the infinite double well
+    y0: float
+        value of y at t_n
+    tau: float
+        value of the temperature 
+    b1: float
+        brownian increment 
+    dt: float
+        time increment
+    """
+    a=4
+    b=np.power(2,3/4)
+    y1=y0 + (a*y0+b)*dt+s*b1
+    return y1 
 
 
 @njit() #float64[:](float64,float64,float64,float64))
-def DW_sde_fast_lin(N,dt,tau): # Function is compiled and runs in machine code
+def DW_sde_fast_lin(N,dt,tau,em_method,y0): # Function is compiled and runs in machine code
     """
     Input
     -------
@@ -50,10 +67,9 @@ def DW_sde_fast_lin(N,dt,tau): # Function is compiled and runs in machine code
     y_final = [] #np.zeros(n_samples)
     s = np.sqrt(2*tau*dt)
     n_esc=0
-    y0 = 2 #initial condition
     for jj in range(N): # Run until T= Tsec
         b1 = np.random.normal(0,1,1)[0]
-        y1 = e_m_fast(y0,s,b1,dt)
+        y1 = em_method(y0,s,b1,dt)
         y0=y1 
         y_final.append(y1)
     y_final=np.array(y_final)
