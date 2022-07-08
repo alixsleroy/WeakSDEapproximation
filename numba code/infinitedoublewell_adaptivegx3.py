@@ -6,7 +6,8 @@ def plot_dist(y,tau,dt,n_samples,T,title,ax):
     ax.set_title(str(title)+", $\\tau$="+str(tau)+", h="+str(dt)+", \n N="+str(n_samples)+", T="+str(T))
 
     #Plot 1
-    histogram,bins = np.histogram(y,bins=100,range=[-3,3], density=True)
+    histogram,bins = np.histogram(y,bins=100,range=[-5,5], density=True)
+
     midx = (bins[0:-1]+bins[1:])/2
     histogram=(histogram/np.sum(histogram))
     ax.plot(midx,histogram,label='q-Experiment')
@@ -43,18 +44,30 @@ def dU(x):
     return 1/(x*x*x)-2*x
 
 # define the adaptive function 
-@njit(float64[:](float64))
-def g3(x):
+@njit(float64[:](float64,float64,float64,float64))
+def g3(x,h,dtmin,dtmax):
     """
     Compute the value of the adaptive function choosen:
     x: float 
     """
+    M=h/dtmin
+    m=h/dtmax
     x3=np.power(x,3)
-    nablaV=np.abs(-1/x3+2*x)
-    laplacienV=np.abs(3/(x3*x)+2)
-    gx = 1/nablaV
-    gprime=gx*laplacienV/nablaV
-    re=np.array([gx,gprime])
+
+    # value of function f
+    f=np.abs(-1/x3+2*x)
+    fprime=np.abs(3/(x3*x)+2)
+
+    #compute gx
+    gx_num=1/M*(f+m)+1
+    gx_den =f+m 
+    gx=gx_num/gx_den
+
+    #compute gx prime 
+    gxprime=fprime/(gx_den*gx_den)
+
+    #return
+    re=np.array([gx,gxprime])
     return re
 
 @njit(float64(float64,float64,float64,float64))
@@ -70,7 +83,7 @@ def e_m_ada3(y0,s,b1,dt):
     dt: float
         time increment
     """
-    re=g3(y0)
+    re=g3(y0,dt,0.000001,0.1)
     gy=re[0]
     nablag=re[1]
     y1=y0+(gy*dU(y0)+nablag)*dt+np.sqrt(gy)*s*b1
@@ -138,6 +151,7 @@ def IDW_nsample_ada3(n_samples,T,dt,tau): # Function is compiled and runs in mac
     y_final=np.array(y_final)
     return y_final
 
-ytest= IDW_nsample_ada3(10**2,3,0.1,10) # compile the function
+ytest= IDW_nsample_ada3(10**2,3,0.001,10) # compile the function
+
 
 #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function
