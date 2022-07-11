@@ -34,16 +34,16 @@ def g3(x,h,dtmin,dtmax):
     x3=np.power(x,3)
 
     # value of function f
-    f=np.abs(-1/x3+2*x)
+    f=np.abs(1/x3-2*x)
     fprime=np.abs(3/(x3*x)+2)
 
     #compute gx
     gx_num=1/M*(f+m)+1
     gx_den =f+m 
-    gx=gx_num/gx_den
+    gx=np.round(gx_num/gx_den,6)
 
     #compute gx prime 
-    gxprime=-fprime/(gx_den*gx_den)
+    gxprime=np.round(-fprime/(gx_den*gx_den),6)
 
     #return
     re=np.array([gx,gxprime])
@@ -62,7 +62,7 @@ def e_m_ada3(y0,s,b1,dt):
     dt: float
         time increment
     """
-    re=g3(y0,dt,0.000001,0.1)
+    re=g3(y0,dt,0.0001,0.05)
     gy=re[0]
     nablag=re[1]
     y1=y0+(gy*dU(y0)+nablag)*dt+np.sqrt(gy)*s*b1
@@ -156,3 +156,4 @@ def plot_dist(y,tau,dt,n_samples,T,title,ax):
     rho=[rho[i] if i>50 else 0 for i in range(len(rho))]
     ax.plot(midx,rho,'--',label='Truth') 
     ax.legend()
+
