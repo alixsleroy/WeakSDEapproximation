@@ -97,5 +97,6 @@ def IDW_nsample(n_samples,T,dt,tau): # Function is compiled and runs in machine 
     y_final=np.array(y_final)
     return y_final
 
-# ytest=y_compile = DW_sde_fast(10**6,3,0.1,10) # compile the function
+y_compile = IDW_nsample(10**6,3,0.1,10) # compile the function
+
 #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function

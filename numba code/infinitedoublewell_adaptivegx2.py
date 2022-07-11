@@ -34,24 +34,25 @@ def U(x):
     
 # define the gradV function 
 @njit(float64(float64))
-def dU(x):
+def minusdU(x):
     """
     Compute the potential of the infinite double well:
     x: float 
     """
 
-    return 1/(x*x*x)-2*x
+    return -1/(x*x*x)+2*x
 
 # define the adaptive function 
-@njit(float64[:](float64))
-def g2(x):
+@njit(float64[:](float64,float64[:]))
+def g2(x,dtbounds):
     """
     Compute the value of the adaptive function choosen:
     x: float 
     """
-    dtmin=0.1
-    dtmax=1
-    R=1
+        #bound of the numerical method
+    dtmin=dtbounds[0]
+    dtmax=dtbounds[1]
+    R=0.1
     slope=(dtmax-dtmin)*R
     y=slope*np.abs(x)+dtmin
     yprime = slope
@@ -59,8 +60,8 @@ def g2(x):
     return re
 
 
-@njit(float64(float64,float64,float64,float64))
-def e_m_ada2(y0,s,b1,dt):
+@njit(float64(float64,float64,float64,float64,float64[:]))
+def e_m_ada2(y0,s,b1,dt,dtbounds):
     """
     The Euler-Maruyama scheme applied to the infinite double well
     y0: float
@@ -72,18 +73,18 @@ def e_m_ada2(y0,s,b1,dt):
     dt: float
         time increment
     """
-    re=g2(y0)
+    re=g2(y0,dtbounds)
     gy=re[0]
     nablag=re[1]
-    y1=y0+(gy*dU(y0)+nablag)*dt+np.sqrt(gy)*s*b1
+    y1=y0-gy*minusdU(y0)*dt+nablag*dt+np.sqrt(gy)*s*b1
     return y1    
 
 
 # @njit(nb.types.UniTuple(nb.float64,2)(float64,float64,float64,float64,float64))
 # def run_num(N,dt,s,T,n_esc):
 
-@njit(float64(float64,float64,float64))
-def run_num_ada2(Ntot,dt,s):
+@njit(float64(float64,float64,float64,float64[:]))
+def run_num_ada2(Ntot,dt,s,dtbounds):
     """
     Run the simulation for one sample path
     Input
@@ -103,14 +104,14 @@ def run_num_ada2(Ntot,dt,s):
     y0 = 1
     for jj in range(Ntot): # Run until T= Tsec
         b1 = np.random.normal(0,1,1)[0]
-        y1 = e_m_ada2(y0,s,b1,dt)
+        y1 = e_m_ada2(y0,s,b1,dt,dtbounds)
         y0=y1 
     return (y0)
 
 
 
 @njit(parallel=True)
-def IDW_nsample_ada2(n_samples,T,dt,tau): # Function is compiled and runs in machine code
+def IDW_nsample_ada2(n_samples,T,dt,tau,dtbounds): # Function is compiled and runs in machine code
     """
     Input
     -------
@@ -135,11 +136,12 @@ def IDW_nsample_ada2(n_samples,T,dt,tau): # Function is compiled and runs in mac
     y_final = [] #np.zeros(n_samples)
     s = np.sqrt(2*tau*dt)
     for i in range(n_samples):
-        yf =run_num_ada2(Ntot,dt,s)
+        yf =run_num_ada2(Ntot,dt,s,dtbounds)
         y_final.append(yf)
     y_final=np.array(y_final)
     return y_final
 
-ytest= IDW_nsample_ada2(10**2,3,0.1,10) # compile the function
+ytest= IDW_nsample_ada2(10**2,3,0.1,10,np.array([0.001,0.1])) # compile the function
+
 
 #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function
