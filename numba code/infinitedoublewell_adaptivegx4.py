@@ -74,14 +74,14 @@ def g4(x,h,dtbounds):
     gxprime= gxp_num/gxp_den
 
     #round number to avoid having too large number 
-    gx = gx
+    gx =gx
     gxprime = gxprime
 
     #return
     re=np.array([gx,gxprime])
     return re
 
-@njit(float64(float64,float64,float64,float64,float64[:]))
+@njit(float64[:](float64,float64,float64,float64,float64[:]))
 def e_m_ada4(y0,s,b1,dt,dtbounds):
     """
     The Euler-Maruyama scheme applied to the infinite double well
@@ -95,24 +95,19 @@ def e_m_ada4(y0,s,b1,dt,dtbounds):
         time increment
     """
     re=g4(y0,dt,dtbounds)
-
     gy=re[0]
-    # print(gy)
     nablag=re[1]
-    # print(nablag)
-
-    nablag=0
-    gy=1
-    y1=y0-gy*minusdU(y0)*dt+nablag*dt+s*b1*np.sqrt(gy)
-
-    return y1    
+    newdt = np.round(gy*dt,7)
+    y1=y0-minusdU(y0)*newdt+nablag*dt+s*b1*np.sqrt(gy)
+    yt=np.array([y1,newdt])
+    return yt    
 
 
 # @njit(nb.types.UniTuple(nb.float64,2)(float64,float64,float64,float64,float64))
 # def run_num(N,dt,s,T,n_esc):
 
 @njit(float64(float64,float64,float64,float64[:]))
-def run_num_ada4(Ntot,dt,s,dtbounds):
+def run_num_ada4(T,dt,s,dtbounds):
     """
     Run the simulation for one sample path
     Input
@@ -130,10 +125,15 @@ def run_num_ada4(Ntot,dt,s,dtbounds):
     """
 
     y0 = 1
-    for jj in range(Ntot): # Run until T= Tsec
+    t=0
+    while t<T:
+    # for jj in range(Ntot): # Run until T= Tsec
         b1 = np.random.normal(0,1,1)[0]
-        y1 = e_m_ada4(y0,s,b1,dt,dtbounds)
+        yt = e_m_ada4(y0,s,b1,dt,dtbounds)
+        y1=yt[0]
+        newdt=yt[1]
         y0=y1 
+        t=np.round(t+newdt,7)
     return (y0)
 
 
@@ -160,12 +160,12 @@ def IDW_nsample_ada4(n_samples,T,tau,dt,dtbounds): # Function is compiled and ru
         Array of shape (M,). Sample of numerical approximation of the DW SDE at time T
     
     """
-    N = int(np.round(1/dt,6))  #size of the time steps
-    Ntot = N*T #total number of steps to take to arrive at T in steps of dt 
+    # N = int(np.round(1/dt,6))  #size of the time steps
+    # Ntot = N*T #total number of steps to take to arrive at T in steps of dt 
     y_final = [] #np.zeros(n_samples)
     s = np.sqrt(2*tau*dt)
     for i in range(n_samples):
-        yf =run_num_ada4(Ntot,dt,s,dtbounds)
+        yf =run_num_ada4(T,dt,s,dtbounds)
         y_final.append(yf)
     y_final=np.array(y_final)
     return y_final
@@ -175,35 +175,37 @@ def IDW_nsample_ada4(n_samples,T,tau,dt,dtbounds): # Function is compiled and ru
 
 
 
-#%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function
-def plot_dist(y,tau,dt,n_samples,T,title,ax):
+# #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function
+# def plot_dist(y,tau,dt,n_samples,T,title,ax):
 
-    ax.set_title(str(title)+", $\\tau$="+str(tau)+", h="+str(dt)+", \n N="+str(n_samples)+", T="+str(T))
+#     ax.set_title(str(title)+", $\\tau$="+str(tau)+", h="+str(dt)+", \n N="+str(n_samples)+", T="+str(T))
 
-    #Plot 1
-    histogram,bins = np.histogram(y,bins=1000,range=[-5,5], density=True)
+#     #Plot 1
+#     histogram,bins = np.histogram(y,bins=100,range=[-3,3], density=True)
 
-    midx = (bins[0:-1]+bins[1:])/2
-    histogram=(histogram/np.sum(histogram))
-    ax.plot(midx,histogram,label='q-Experiment')
+#     midx = (bins[0:-1]+bins[1:])/2
+#     histogram=(histogram/np.sum(histogram))
+#     ax.plot(midx,histogram,label='q-Experiment')
 
-    rho = np.exp(- (U(midx)/tau))
-    rho = rho / ( np.sum(rho) * (midx[1]-midx[0]) ) 
-    rho=(rho/np.sum(rho))*2
-    rho=[rho[i] if i>500 else 0 for i in range(len(rho))]
-    ax.plot(midx,rho,'--',label='Truth') 
-    ax.legend()
+#     rho = np.exp(- (U(midx)/tau))
+#     rho = rho / ( np.sum(rho) * (midx[1]-midx[0]) ) 
+#     rho=(rho/np.sum(rho))*2
+#     rho=[rho[i] if i>50 else 0 for i in range(len(rho))]
+#     ax.plot(midx,rho,'--',label='Truth') 
+#     ax.legend()
 
 # ## Parameters 
-n_samples=10**2
-T=100
-tau=0.15
-dt=0.0001
-dtbounds = np.array([0.00001,0.05])
-print("prout")
-## compile
-ytest= IDW_nsample_ada4(10,3,0.1,dt,dtbounds) # compile the function
 # print("prout")
+# ## compile
+# ytest= IDW_nsample_ada4(10,1,0.1,0.1,np.array([0.01,1])) # compile the function
+# print("prout")
+
+# n_samples=10**4
+# T=10
+# tau=0.15
+# dt=1
+# dtbounds = np.array([0.001,0.1])
+
 # y_adag4= IDW_nsample_ada4(n_samples,T,tau,dt,dtbounds) 
 # fig, (ax1)= plt.subplots(1,1,figsize=(18,10))# plt.figure(figsize=(4,4))
 # fig.subplots_adjust(left=0.1,bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4)
