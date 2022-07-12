@@ -139,7 +139,7 @@ def run_num_ada4(T,dt,s,dtbounds):
 
 
 @njit(parallel=True)
-def IDW_nsample_ada4(n_samples,T,tau,dt,dtbounds): # Function is compiled and runs in machine code
+def IDW_nsample_ada4(n_samples,T,dt,dtbounds): # Function is compiled and runs in machine code
 
     """
     Input
@@ -163,7 +163,7 @@ def IDW_nsample_ada4(n_samples,T,tau,dt,dtbounds): # Function is compiled and ru
     # N = int(np.round(1/dt,6))  #size of the time steps
     # Ntot = N*T #total number of steps to take to arrive at T in steps of dt 
     y_final = [] #np.zeros(n_samples)
-    s = np.sqrt(2*tau*dt)
+    s = np.sqrt(2*dt)
     for i in range(n_samples):
         yf =run_num_ada4(T,dt,s,dtbounds)
         y_final.append(yf)
