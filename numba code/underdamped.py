@@ -11,8 +11,8 @@ def F(q):
 
 
 @njit(float64(float64))
-def nablaF(q):
-    return -q
+def nablaU(q):
+    return q
 
 @njit(float64[:](float64[:],float64))
 def A(qp,h):
@@ -26,7 +26,7 @@ def A(qp,h):
 def B(qp,h):
     q=qp[0]
     p=qp[1]
-    p = p+nablaF(q)*h
+    p = p-nablaU(q)*h
     qp=np.array([q,p])
     return (qp)
 
@@ -42,16 +42,17 @@ def O(qp,h,gamma,beta):
 
 @njit(float64[:](float64[:],float64,float64,float64,float64))
 def one_traj(qp,T,h,gamma,beta):
+    h_half=h/2
     for i in range(int(T/h)):
-        qp=B(qp,h)
-        qp=A(qp,h)
-        qp=O(qp,h,gamma,beta)
-        qp=A(qp,h)
-        qp=B(qp,h)
+        qp=B(qp,h_half)
+        qp=A(qp,h_half)
+        qp=O(qp,h_half,gamma,beta)
+        qp=A(qp,h_half)
+        qp=B(qp,h_half)
     return (qp)
 
 @njit(parallel=True)
-def method_baoab(T,gamma,beta,h,N):
+def method_baoab(N,T,gamma,beta,h):
     qp_list=np.zeros((N,2))
     qipi = np.array([1.0,1.0]) #np.random.normal(0,1,2) #initial conditions
     for j in nb.prange(N):
@@ -77,6 +78,7 @@ def plot_qp(qp,beta,gamma):
     histogram,bins = np.histogram(qp[::,0],bins=100,range=[-3,3], density=True)
     midx = (bins[0:-1]+bins[1:])/2
     ax1.plot(midx,histogram,label='q-Experiment')
+    ax1.legend() 
 
     #Plot 2: 
     ### momentum p experiment
