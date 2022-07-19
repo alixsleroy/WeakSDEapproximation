@@ -60,6 +60,27 @@ def method_baoab(N,T,gamma,beta,h):
         qp_list[j,::]=qfpf
     return(qp_list)
 
+@njit(float64[:](float64[:],float64,float64,float64,float64))
+def one_trajN(qp,gamma,beta,h,Ntimes):
+    h_half=h/2
+    for i in range(Ntimes):
+        qp=B(qp,h_half)
+        qp=A(qp,h_half)
+        qp=O(qp,h_half,gamma,beta)
+        qp=A(qp,h_half)
+        qp=B(qp,h_half)
+    return (qp)
+
+@njit(parallel=True)
+def method_baoabN(N,gamma,beta,T,Ntimes):
+    qp_list=np.zeros((N,2))
+    qipi = np.array([1.0,1.0]) #np.random.normal(0,1,2) #initial conditions
+    h=np.round(T/Ntimes,6)
+    for j in nb.prange(N):
+        qfpf = one_trajN(qipi,gamma,beta,h,Ntimes)
+        qp_list[j,::]=qfpf
+    return(qp_list)
+
     
 # axis of the plot 
 def plot_qp(qp,beta,gamma):
@@ -101,3 +122,4 @@ def plot_qp(qp,beta,gamma):
     ax3.plot(qp[::,0],label="q")
 
     ax3.legend()
+
