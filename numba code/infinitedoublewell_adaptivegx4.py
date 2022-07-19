@@ -106,7 +106,7 @@ def e_m_ada4(y0,s,b1,dt,dtbounds):
 # @njit(nb.types.UniTuple(nb.float64,2)(float64,float64,float64,float64,float64))
 # def run_num(N,dt,s,T,n_esc):
 
-@njit(float64(float64,float64,float64,float64[:]))
+@njit(float64[:](float64,float64,float64,float64[:]))
 def run_num_ada4(T,dt,s,dtbounds):
     """
     Run the simulation for one sample path
@@ -126,6 +126,7 @@ def run_num_ada4(T,dt,s,dtbounds):
 
     y0 = 1
     t=0
+    t_count=0.0
     while t<T:
     # for jj in range(Ntot): # Run until T= Tsec
         b1 = np.random.normal(0,1,1)[0]
@@ -134,7 +135,9 @@ def run_num_ada4(T,dt,s,dtbounds):
         newdt=yt[1]
         y0=y1 
         t=np.round(t+newdt,7)
-    return (y0)
+        t_count=t_count+1
+    y_t = np.array([y0,t_count])
+    return (y_t)
 
 
 
@@ -162,13 +165,14 @@ def IDW_nsample_ada4(n_samples,T,dt,dtbounds): # Function is compiled and runs i
     """
     # N = int(np.round(1/dt,6))  #size of the time steps
     # Ntot = N*T #total number of steps to take to arrive at T in steps of dt 
-    y_final = [] #np.zeros(n_samples)
+    # y_final = [] #np.zeros(n_samples)
+    # t_tot=[] #number of force evaluation per run
+    yt_list=np.zeros((n_samples,2)) #vector to save solutions and number of run
     s = np.sqrt(2*dt)
     for i in range(n_samples):
-        yf =run_num_ada4(T,dt,s,dtbounds)
-        y_final.append(yf)
-    y_final=np.array(y_final)
-    return y_final
+        yf_t =run_num_ada4(T,dt,s,dtbounds)
+        yt_list[i,::]=yf_t
+    return yt_list
 
 
 
@@ -194,10 +198,10 @@ def IDW_nsample_ada4(n_samples,T,dt,dtbounds): # Function is compiled and runs i
 #     ax.plot(midx,rho,'--',label='Truth') 
 #     ax.legend()
 
-# ## Parameters 
+## Parameters 
 # print("prout")
 # ## compile
-# ytest= IDW_nsample_ada4(10,1,0.1,0.1,np.array([0.01,1])) # compile the function
+# ytest= IDW_nsample_ada4(10,1,0.1,np.array([0.01,1])) # compile the function
 # print("prout")
 
 # n_samples=10**4
@@ -206,7 +210,7 @@ def IDW_nsample_ada4(n_samples,T,dt,dtbounds): # Function is compiled and runs i
 # dt=1
 # dtbounds = np.array([0.001,0.1])
 
-# y_adag4= IDW_nsample_ada4(n_samples,T,tau,dt,dtbounds) 
+# y_adag4= IDW_nsample_ada4(n_samples,T,dt,dtbounds) 
 # fig, (ax1)= plt.subplots(1,1,figsize=(18,10))# plt.figure(figsize=(4,4))
 # fig.subplots_adjust(left=0.1,bottom=0.1, right=0.9, top=0.9, wspace=0.4, hspace=0.4)
 # plot_dist(y_adag4,tau,dt,n_samples,T,"adaptive g4",ax1)

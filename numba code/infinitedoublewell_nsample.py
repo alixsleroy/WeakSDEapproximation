@@ -97,6 +97,38 @@ def IDW_nsample(n_samples,T,dt,tau): # Function is compiled and runs in machine 
     y_final=np.array(y_final)
     return y_final
 
-y_compile = IDW_nsample(10**6,3,0.1,10) # compile the function
+@njit(parallel=True)
+def IDW_nsampleN(n_samples,T,Ntot,tau): # Function is compiled and runs in machine code
+    """
+    Input
+    -------
+    n_samples: int
+        Number of sample to draw
+    T: int 
+        Final time
+    dt: float
+        Size of the time discretization 
+    tau: float
+        Value of the temperature of the DW SDE (+ sqrt(2*tau)*dW)
+    method: function
+        Numerical scheme used for the DW SDE
+    Return
+    -------
+    y_final: np.array
+        Array of shape (M,). Sample of numerical approximation of the DW SDE at time T
+    
+    """
+    # N = int(np.round(1/dt,6))  #size of the time steps
+    dt = np.round(T/Ntot,6) #total number of steps to take to arrive at T in steps of dt 
+    y_final = [] #np.zeros(n_samples)
+    s = np.sqrt(2*tau*dt)
+    for i in range(n_samples):
+        yf =run_num(Ntot,dt,s)
+        y_final.append(yf)
+    y_final=np.array(y_final)
+    return y_final
+
+
+# y_compile = IDW_nsample(10**6,3,0.1,10) # compile the function
 
 #%time ytest=y_compile = DW_sde_fast(1000,3,10,0.01,20) # compile the function

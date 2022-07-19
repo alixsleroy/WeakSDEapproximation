@@ -87,6 +87,7 @@ def O_ada(qp,h,dtbounds,gamma,beta):
 def one_traj_ada(qp,T,h,dtbounds,gamma,beta):
     t=0
     h_half=h/2
+    tcount=0
     while t<T:
         qp_gq=B_ada(qp,h_half,dtbounds)
         qp=A_ada(qp_gq,h_half,dtbounds)
@@ -96,18 +97,22 @@ def one_traj_ada(qp,T,h,dtbounds,gamma,beta):
         qp=qp_gq[:2]
         gq=qp_gq[2]
         t=np.round(t+gq*h,7)
-    return (qp)
+        tcount=tcount+1
+    qp_t=np.append(qp,tcount)
+    return (qp_t)
+    
 
 @njit(parallel=True)
 def method_baoab_ada2(n_samples,T,gamma,beta,h,dtbounds):
-    qp_list=np.zeros((n_samples,2))
+    qpt_list=np.zeros((n_samples,3))
     qipi = np.array([1.0,1.0]) #np.random.normal(0,1,2) #initial conditions
     for j in nb.prange(n_samples):
-        qfpf = one_traj_ada(qipi,T,h,dtbounds,gamma,beta)
-        qp_list[j,::]=qfpf
-    return(qp_list)
+        qfpftf = one_traj_ada(qipi,T,h,dtbounds,gamma,beta)
+        qpt_list[j,::]=qfpftf
+    return(qpt_list)
 
 #compile the method
-method_baoab_ada2(1,1,0.1,0.5,0.01,np.array([0.01,0.1]))
+print(method_baoab_ada2(10,10,0.1,0.5,0.1,np.array([0.01,0.1])))
+
 
 
